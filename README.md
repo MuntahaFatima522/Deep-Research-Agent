@@ -2,8 +2,8 @@
 
 An autonomous research agent built with Python 3.11, LangGraph, LangChain, and FastAPI. It decomposes complex questions into targeted sub-questions, executes parallel web searches and document extractions via Tavily, organizes evidence, conducts gap analysis, writes grounded reports, verifies factual claims against source snippets, and streams live execution events via Server-Sent Events (SSE).
 
-Architecture & Workflow
-text
+## Architecture & Workflow:
+
 User Question
      │
      ▼
@@ -27,7 +27,6 @@ User Question
                                 │
                                 ▼
                            [Final Report & Stream Done]
-
 
 ## What You Need
 
