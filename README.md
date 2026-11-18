@@ -34,22 +34,33 @@ User Question
 
 ---
 
-## 1. Setup & Installation
+## 1. Setup & Installation (Linux / macOS)
 
 ### Prerequisites
-- Python 3.11+
+- Linux (Ubuntu/Debian shown below) or macOS
+- Python 3.11+, `python3-venv`, and `unzip`
 - Tavily API key ([tavily.com](https://tavily.com))
 - Google Gemini API key or Anthropic Claude API key
 
-### Local Setup (Windows PowerShell)
+On Ubuntu/Debian, install the system packages first:
 
-```powershell
-# 1. Clone or navigate to the repository
-cd M:\GAIRL\Research-agent-article\deep-research-agent
+```bash
+sudo apt update
+sudo apt install -y unzip python3 python3-venv python3-pip
+python3 --version   # must print 3.11 or higher
+```
+
+### Local Setup
+
+```bash
+# 1. Download the repository as a ZIP, unzip it, and enter the folder
+#    (browser: GitHub repo > green Code button > Download ZIP)
+unzip deep-research-agent-main.zip
+cd deep-research-agent-main
 
 # 2. Create and activate a virtual environment
-python -m venv .venv
-.venv\Scripts\Activate.ps1
+python3 -m venv .venv
+source .venv/bin/activate
 
 # 3. Install backend dependencies
 pip install -r backend/requirements.txt
@@ -57,7 +68,12 @@ pip install -r backend/requirements.txt
 # 4. Configure environment variables
 cp backend/.env.example backend/.env
 # Edit backend/.env and populate your GOOGLE_API_KEY and TAVILY_API_KEY
+nano backend/.env
 ```
+
+Keep the virtual environment active for every command below. When you open a new terminal, run `source .venv/bin/activate` from the project folder again.
+
+The ZIP does not contain your `.env` file, so step 4 creates it from `.env.example`.
 
 ---
 
@@ -72,6 +88,10 @@ cp backend/.env.example backend/.env
 | `TAVILY_API_KEY` | Tavily Search & Extract API key | required |
 | `MAX_SEARCHES` | Maximum global search queries permitted per run | `12` |
 | `MAX_ROUNDS` | Maximum iterative gap research rounds | `2` |
+| `MAX_SEARCHES_PER_WORKER` | Maximum searches one worker may run | `4` |
+| `RUN_TIMEOUT_SECONDS` | Hard time limit for one run | `300` |
+| `LANGSMITH_TRACING` | Set to `true` to record traces (optional) | `false` |
+| `LANGSMITH_API_KEY` | LangSmith API key (optional) | *(empty)* |
 | `APP_ENV` | Application environment (`dev` or `prod`) | `dev` |
 | `DATABASE_URL` | PostgreSQL connection string (empty = SQLite) | *(empty)* |
 | `FRONTEND_URL` | Allowed CORS origin for frontend | `http://localhost:3000` |
@@ -82,19 +102,19 @@ cp backend/.env.example backend/.env
 
 ### Option A: Run CLI Agent with Live Streaming
 Run deep research directly in your terminal:
-```powershell
-.venv\Scripts\python.exe scripts/run_agent.py "Compare PostgreSQL and MongoDB for an e-commerce application managing customers, products, orders, payments, and inventory"
+```bash
+python scripts/run_agent.py "Compare PostgreSQL and MongoDB for an e-commerce application managing customers, products, orders, payments, and inventory"
 ```
 
 To resume an interrupted run from its saved checkpoint:
-```powershell
-.venv\Scripts\python.exe scripts/run_agent.py --resume <run_id>
+```bash
+python scripts/run_agent.py --resume <run_id>
 ```
 
 ### Option B: Run FastAPI Server
 Start the API server with live SSE streaming support:
-```powershell
-.venv\Scripts\python.exe -m uvicorn backend.app.main:app --host 0.0.0.0 --port 8000 --reload
+```bash
+python -m uvicorn backend.app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 Interactive Swagger API documentation will be available at: `http://localhost:8000/docs`.
 
@@ -154,11 +174,11 @@ curl -X POST http://localhost:8000/api/runs/run_9a8b7c6d5e/resume
 
 To switch from Google Gemini (development) to Anthropic Claude (production):
 
-1. **Update `.env`**:
+1. **Update `backend/.env`**:
    ```env
    LLM_PROVIDER=anthropic
-   LLM_MODEL=claude-3-5-sonnet-20241022
-   ANTHROPIC_API_KEY=sk-ant-api03-...
+   LLM_MODEL=claude-sonnet-5-5
+   ANTHROPIC_API_KEY=your_anthropic_api_key_here
    ```
 2. **Update Cost Rates in `backend/app/cost.py`**:
    Verify input/output rates in the `PRICES` dictionary for your chosen Claude model.
@@ -168,22 +188,22 @@ To switch from Google Gemini (development) to Anthropic Claude (production):
 
 ## 6. Running Tests & Benchmarks
 
-```powershell
+```bash
 # Run all unit and workflow tests
-.venv\Scripts\python.exe -m pytest backend/tests/ -v
+python -m pytest backend/tests/ -v
 
 # Run 3-question evaluation benchmark
-.venv\Scripts\python.exe scripts/evaluate.py
+python scripts/evaluate.py
 ```
 
 ---
 
 ## 7. Docker Deployment
 
-Build and run with Docker:
+Install Docker first (Ubuntu: `sudo apt install -y docker.io`), then build and run:
 ```bash
-docker build -t deep-research-agent .
-docker run -p 8000:8000 --env-file backend/.env deep-research-agent
+sudo docker build -t deep-research-agent .
+sudo docker run -p 8000:8000 --env-file backend/.env deep-research-agent
 ```
 
 ---
@@ -194,7 +214,7 @@ docker run -p 8000:8000 --env-file backend/.env deep-research-agent
 - [x] **Pydantic Schemas & State**: `ResearchPlan`, `Note`, `SourceDoc`, `GapCheck`, `Claim`, `ReportDraft`, and `ClaimVerdict`.
 - [x] **Resilient Web Tools**: `search_web` and `read_pages` catch exceptions, log warnings, and never crash.
 - [x] **Parallel Workers**: Supervisor-worker fan-out via LangGraph `Send` primitives.
-- [x] **Evidence Organization**: Automatic deduplication and source numbering ($1..N$) without LLM overhead.
+- [x] **Evidence Organization**: Automatic deduplication and source numbering (1..N) without LLM overhead.
 - [x] **Grounded Report Synthesis**: Generates report sections referencing note citation numbers.
 - [x] **Claim Verification**: Concurrent verification of all report assertions against cited source snippets.
 - [x] **Checkpointing & Persistence**: Automatic local SQLite checkpointer at `backend/data/checkpoints.sqlite` with Postgres fallback.
