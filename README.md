@@ -1,221 +1,202 @@
-# Deep Research Agent
+# Deep Research Agent: Setup on Linux Using the Graphical Interface
 
-An autonomous research agent built with **Python 3.11**, **LangGraph**, **LangChain**, and **FastAPI**. It decomposes complex questions into targeted sub-questions, executes parallel web searches and document extractions via Tavily, organizes evidence, conducts gap analysis, writes grounded reports, verifies factual claims against source snippets, and streams live execution events via Server-Sent Events (SSE).
+## What You Need
 
----
-
-## Architecture & Workflow
-
-```text
-User Question
-     │
-     ▼
-[Plan Node] (Decomposes into 3-5 sub-questions)
-     │
-     ▼
-[Fan-Out Workers] ──── (Parallel Workers search & read web pages)
-     │
-     ▼
-[Merge Evidence Node] (Dedupes facts, numbers sources 1..N)
-     │
-     ▼
-[Gaps Node] (Evaluates sufficiency; max 2 extra rounds)
-     │
-   ┌─┴──────────────────────────┐
-   ▼ (if incomplete & < limits)  ▼ (if sufficient or reached limits)
-[Fan-Out Workers]          [Synthesizer Node] (Drafts report from numbered notes)
-                                │
-                                ▼
-                           [Verifier Node] (Fact-checks claims against snippets)
-                                │
-                                ▼
-                           [Final Report & Stream Done]
-```
+- A Linux desktop with internet access
+- The project ZIP from GitHub
+- A Gemini API key and a Tavily API key (Step 2)
 
 ---
 
-## 1. Setup & Installation (Linux / macOS)
+## Step 1: Download the Project
 
-### Prerequisites
-- Linux (Ubuntu/Debian shown below) or macOS
-- Python 3.11+, `python3-venv`, and `unzip`
-- Tavily API key ([tavily.com](https://tavily.com))
-- Google Gemini API key or Anthropic Claude API key
+1. Open your browser and go to your GitHub repository.
+2. Click the green **Code** button, then **Download ZIP**.
+3. Open the **Files** app and go to **Downloads**.
+4. Right-click `deep-research-agent-main.zip` and choose **Extract Here**.
 
-On Ubuntu/Debian, install the system packages first:
+A folder named `deep-research-agent-main` appears. You may move it to **Documents** if you like.
+
+---
+
+## Step 2: Get Your Two API Keys
+
+An API key is a secret password which tells a service that a request comes from you.
+
+**Gemini key**
+
+1. Open `aistudio.google.com/api-keys` and sign in with your Google account.
+2. Click **Create API key**.
+3. Copy the key and paste it into a temporary text file for now.
+
+**Tavily key**
+
+1. Open `app.tavily.com` and sign up.
+2. Find **API Keys** in the dashboard and copy your key.
+3. Paste it into the same temporary text file.
+
+Never share these keys, post them, or put them in screenshots.
+
+---
+
+## Step 3: Install VS Code
+
+1. Open **Ubuntu Software** (or **App Center**).
+2. Search for **Visual Studio Code** and click **Install**.
+3. Enter your password when asked.
+
+If it does not appear in your app store, download the `.deb` file from `code.visualstudio.com`, then double-click it in the **Files** app and click **Install**.
+
+---
+
+## Step 4: Open the Project in VS Code
+
+1. Start **VS Code** from the applications menu.
+2. Click **File**, then **Open Folder**.
+3. Choose `deep-research-agent-main` and click **OK**.
+4. Click **Yes, I trust the authors** when asked.
+5. Click the **Extensions** icon (four squares) on the left, search for **Python**, and install the one from Microsoft.
+
+---
+
+## Step 5: Create the Virtual Environment and Install Libraries
+
+A virtual environment is a separate toolbox for this project, so its libraries never clash with other software.
+
+1. Press `Ctrl + Shift + P` to open the Command Palette.
+2. Type **Python: Create Environment** and press Enter.
+3. Choose **Venv**.
+4. Choose a Python interpreter. It must be version **3.11 or higher**; the version shows next to each option.
+5. Tick the box beside `backend/requirements.txt` when VS Code lists dependency files, then click **OK**.
+6. Wait until the progress message in the bottom right finishes. This takes a few minutes.
+
+If VS Code says the environment could not be created, the system is missing one package. Open **Terminal**, then **New Terminal** from the top menu, and run this once:
 
 ```bash
-sudo apt update
-sudo apt install -y unzip python3 python3-venv python3-pip
-python3 --version   # must print 3.11 or higher
+sudo apt install -y python3-venv
 ```
 
-### Local Setup
+Then repeat steps 1 to 6.
+
+If `backend/requirements.txt` is not listed in step 5, finish creating the environment, open a new terminal (**Terminal**, then **New Terminal**) and run:
 
 ```bash
-# 1. Download the repository as a ZIP, unzip it, and enter the folder
-#    (browser: GitHub repo > green Code button > Download ZIP)
-unzip deep-research-agent-main.zip
-cd deep-research-agent-main
-
-# 2. Create and activate a virtual environment
-python3 -m venv .venv
-source .venv/bin/activate
-
-# 3. Install backend dependencies
 pip install -r backend/requirements.txt
-
-# 4. Configure environment variables
-cp backend/.env.example backend/.env
-# Edit backend/.env and populate your GOOGLE_API_KEY and TAVILY_API_KEY
-nano backend/.env
 ```
 
-Keep the virtual environment active for every command below. When you open a new terminal, run `source .venv/bin/activate` from the project folder again.
-
-The ZIP does not contain your `.env` file, so step 4 creates it from `.env.example`.
+**Check:** The bottom right of VS Code should show your Python version with `.venv` beside it. The terminal prompt should start with `(.venv)`.
 
 ---
 
-## 2. Environment Variables
+## Step 6: Create the .env File and Add Your Keys
 
-| Variable | Description | Default |
-| :--- | :--- | :--- |
-| `LLM_PROVIDER` | Model provider: `gemini` (dev) or `anthropic` (prod) | `gemini` |
-| `LLM_MODEL` | Specific LLM model identifier | `gemini-3.8-flash` |
-| `GOOGLE_API_KEY` | Google Gemini API key | required for Gemini |
-| `ANTHROPIC_API_KEY`| Anthropic Claude API key | required for Claude |
-| `TAVILY_API_KEY` | Tavily Search & Extract API key | required |
-| `MAX_SEARCHES` | Maximum global search queries permitted per run | `12` |
-| `MAX_ROUNDS` | Maximum iterative gap research rounds | `2` |
-| `MAX_SEARCHES_PER_WORKER` | Maximum searches one worker may run | `4` |
-| `RUN_TIMEOUT_SECONDS` | Hard time limit for one run | `300` |
-| `LANGSMITH_TRACING` | Set to `true` to record traces (optional) | `false` |
-| `LANGSMITH_API_KEY` | LangSmith API key (optional) | *(empty)* |
-| `APP_ENV` | Application environment (`dev` or `prod`) | `dev` |
-| `DATABASE_URL` | PostgreSQL connection string (empty = SQLite) | *(empty)* |
-| `FRONTEND_URL` | Allowed CORS origin for frontend | `http://localhost:3000` |
+1. In the VS Code **Explorer** (left side), open the `backend` folder.
+2. Right-click `.env.example` and choose **Copy**.
+3. Right-click the `backend` folder and choose **Paste**.
+4. Right-click the pasted file (usually named `.env copy.example`), choose **Rename**, and type `.env`. Press Enter.
+5. Double-click `.env` to open it.
+6. Replace the placeholder values with your keys, like this:
+
+```
+LLM_PROVIDER=gemini
+LLM_MODEL=gemini-3.8-flash
+GOOGLE_API_KEY=paste_your_gemini_key_here
+TAVILY_API_KEY=paste_your_tavily_key_here
+```
+
+7. Press `Ctrl + S` to save.
+
+**Rules for the .env file:**
+
+- Put no space around `=`. Correct: `GOOGLE_API_KEY=abc123`.
+- Do not wrap keys in quotes.
+- The file must be named exactly `.env` and sit inside the `backend` folder.
+- Never upload `.env` to GitHub.
 
 ---
 
-## 3. How to Run
+## Step 7: Check the Setup
 
-### Option A: Run CLI Agent with Live Streaming
-Run deep research directly in your terminal:
+1. In the top menu, click **Terminal**, then **New Terminal**.
+2. Confirm the prompt starts with `(.venv)`.
+3. Run:
+
 ```bash
-python scripts/run_agent.py "Compare PostgreSQL and MongoDB for an e-commerce application managing customers, products, orders, payments, and inventory"
+python scripts/check_setup.py
 ```
 
-To resume an interrupted run from its saved checkpoint:
+The script asks the model to say hello and runs one live search. If both calls succeed, your setup works.
+
+---
+
+## Step 8: Run the Agent
+
+In the same terminal, run:
+
 ```bash
-python scripts/run_agent.py --resume <run_id>
+python scripts/run_agent.py "Compare PostgreSQL and MongoDB for an online store"
 ```
 
-### Option B: Run FastAPI Server
-Start the API server with live SSE streaming support:
+You see the stages appear line by line: plan, workers, evidence, gap review, writing, verifying, and the final report. A run takes about one to two minutes.
+
+---
+
+## Step 9: Run the Web Server and Test It in the Browser
+
+1. In the terminal, run:
+
 ```bash
 python -m uvicorn backend.app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
-Interactive Swagger API documentation will be available at: `http://localhost:8000/docs`.
+
+2. Open your browser and go to `http://localhost:8000/docs`.
+3. Click **POST /api/runs**, then **Try it out**.
+4. Replace the sample text with your question, for example:
+
+```
+{"question": "What is the impact of AI on healthcare diagnostics?"}
+```
+
+5. Click **Execute**. The response contains a `run_id`.
+6. Click **GET /api/runs/{run_id}**, then **Try it out**, paste your `run_id`, and click **Execute** to see the finished report.
+
+To stop the server, click inside the terminal and press `Ctrl + C`.
 
 ---
 
-## 4. API Endpoints & `curl` Examples
+## Step 10: Run the Frontend (Web Screen)
 
-### 1. Health Check
+The web screen lives in the `frontend` folder. Open `frontend/package.json` first and check that a `dev` script exists under `scripts`. Then, with the backend server from Step 9 still running, open a second terminal (the **+** button above the terminal panel) and run:
+
 ```bash
-curl -X GET http://localhost:8000/health
-```
-Response:
-```json
-{"status": "ok"}
-```
-
-### 2. Start a New Research Run
-```bash
-curl -X POST http://localhost:8000/api/runs \
-  -H "Content-Type: application/json" \
-  -d '{"question": "What is the impact of artificial intelligence on healthcare diagnostics?"}'
-```
-Response:
-```json
-{"run_id": "run_9a8b7c6d5e"}
+sudo apt install -y nodejs npm
+cd frontend
+npm install
+npm run dev
 ```
 
-### 3. Stream Live Progress (Server-Sent Events)
-```bash
-curl -N -X GET http://localhost:8000/api/runs/run_9a8b7c6d5e/events
-```
-Sample event stream:
-```text
-event: message
-data: {"type": "plan", "message": "Created research plan with 3 sub-questions."}
-
-event: message
-data: {"type": "worker_started", "message": "Worker started for: 'AI imaging tools'"}
-
-event: message
-data: {"type": "done", "message": "Research run completed successfully."}
-```
-
-### 4. Fetch Completed Report and Verdicts
-```bash
-curl -X GET http://localhost:8000/api/runs/run_9a8b7c6d5e
-```
-
-### 5. Resume an Existing Run
-```bash
-curl -X POST http://localhost:8000/api/runs/run_9a8b7c6d5e/resume
-```
+Open `http://localhost:3000` in your browser. If the frontend asks for the backend address, use `http://localhost:8000`.
 
 ---
 
-## 5. Switching Model Provider (Gemini to Claude)
+## Common Problems
 
-To switch from Google Gemini (development) to Anthropic Claude (production):
-
-1. **Update `backend/.env`**:
-   ```env
-   LLM_PROVIDER=anthropic
-   LLM_MODEL=claude-sonnet-5-5
-   ANTHROPIC_API_KEY=your_anthropic_api_key_here
-   ```
-2. **Update Cost Rates in `backend/app/cost.py`**:
-   Verify input/output rates in the `PRICES` dictionary for your chosen Claude model.
-3. No code changes are required: `get_llm()` in `backend/app/llm.py` automatically initializes `ChatAnthropic`.
+- **The prompt has no `(.venv)`:** Press `Ctrl + Shift + P`, choose **Python: Select Interpreter**, and pick the one marked `.venv`. Then open a new terminal.
+- **`ModuleNotFoundError`:** The libraries are not installed in the active environment. Run `pip install -r backend/requirements.txt` in a terminal showing `(.venv)`.
+- **Invalid API key or error 401:** A key was copied wrongly or has a space around it. Open `backend/.env` and paste it again.
+- **A setting or key is reported missing:** The file is not at `backend/.env`, or its name is wrong.
+- **Error 429 or rate limit:** The free tier limit is reached. Wait a few minutes and run again.
+- **Port 8000 already in use:** Another server is running. Close the old terminal, or use `--port 8001`.
+- **`.env` is not visible in the Files app:** Press `Ctrl + H` to show hidden files. VS Code shows it normally.
 
 ---
 
-## 6. Running Tests & Benchmarks
+## Final Checklist
 
-```bash
-# Run all unit and workflow tests
-python -m pytest backend/tests/ -v
-
-# Run 3-question evaluation benchmark
-python scripts/evaluate.py
-```
-
----
-
-## 7. Docker Deployment
-
-Install Docker first (Ubuntu: `sudo apt install -y docker.io`), then build and run:
-```bash
-sudo docker build -t deep-research-agent .
-sudo docker run -p 8000:8000 --env-file backend/.env deep-research-agent
-```
-
----
-
-## 8. Final Verification Checklist
-
-- [x] **Setup & Provider**: `get_llm()` switches between Gemini and Claude dynamically via `LLM_PROVIDER`.
-- [x] **Pydantic Schemas & State**: `ResearchPlan`, `Note`, `SourceDoc`, `GapCheck`, `Claim`, `ReportDraft`, and `ClaimVerdict`.
-- [x] **Resilient Web Tools**: `search_web` and `read_pages` catch exceptions, log warnings, and never crash.
-- [x] **Parallel Workers**: Supervisor-worker fan-out via LangGraph `Send` primitives.
-- [x] **Evidence Organization**: Automatic deduplication and source numbering (1..N) without LLM overhead.
-- [x] **Grounded Report Synthesis**: Generates report sections referencing note citation numbers.
-- [x] **Claim Verification**: Concurrent verification of all report assertions against cited source snippets.
-- [x] **Checkpointing & Persistence**: Automatic local SQLite checkpointer at `backend/data/checkpoints.sqlite` with Postgres fallback.
-- [x] **FastAPI & SSE**: Live streaming API with rate limiting and CORS configuration.
+- [ ] Project folder extracted and open in VS Code
+- [ ] Python extension installed
+- [ ] `.venv` created and active
+- [ ] `backend/.env` holds both keys
+- [ ] `check_setup.py` succeeded
+- [ ] `run_agent.py` printed a report
+- [ ] `http://localhost:8000/docs` opens in the browser
