@@ -1,4 +1,33 @@
-# Deep Research Agent: Setup on Linux Using the Graphical Interface
+# Deep Research Agent:
+
+An autonomous research agent built with Python 3.11, LangGraph, LangChain, and FastAPI. It decomposes complex questions into targeted sub-questions, executes parallel web searches and document extractions via Tavily, organizes evidence, conducts gap analysis, writes grounded reports, verifies factual claims against source snippets, and streams live execution events via Server-Sent Events (SSE).
+
+Architecture & Workflow
+text
+User Question
+     │
+     ▼
+[Plan Node] (Decomposes into 3-5 sub-questions)
+     │
+     ▼
+[Fan-Out Workers] ──── (Parallel Workers search & read web pages)
+     │
+     ▼
+[Merge Evidence Node] (Dedupes facts, numbers sources 1..N)
+     │
+     ▼
+[Gaps Node] (Evaluates sufficiency; max 2 extra rounds)
+     │
+   ┌─┴──────────────────────────┐
+   ▼ (if incomplete & < limits)  ▼ (if sufficient or reached limits)
+[Fan-Out Workers]          [Synthesizer Node] (Drafts report from numbered notes)
+                                │
+                                ▼
+                           [Verifier Node] (Fact-checks claims against snippets)
+                                │
+                                ▼
+                           [Final Report & Stream Done]
+
 
 ## What You Need
 
