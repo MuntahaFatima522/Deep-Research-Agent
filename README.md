@@ -4,8 +4,6 @@ An autonomous research agent built with Python 3.11, LangGraph, LangChain, and F
 
 ## Architecture & Workflow:
 
-## Architecture & Workflow
-
 ```text
 User Question
      │
